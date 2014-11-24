@@ -62,6 +62,12 @@ Tony Remans <tony.remans@uhasselt.be>
 For questions regarding the actual implementation, for support or to report bugs, please contact:
 Geert Jan Bex <geertjan.bex@uhasselt.be>
 
+Changes
+-------
+
+* 1.0.1: added support for textual control values
+* 1.0: initial release
+
 Copyright
 ---------
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or any later version.
