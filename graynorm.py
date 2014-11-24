@@ -45,7 +45,12 @@ class Data(object):
         for idx, header in enumerate(self._headers):
             if not header in self._non_data:
                 data[idx] = float(data[idx])
-        cond_values = [float(data[x]) for x in self._cond_idx]
+        cond_values = []
+        for x in self._cond_idx:
+            try:
+                cond_values.append(float(data[x]))
+            except ValueError:
+                cond_values.append(data[x])
         if self._control_cond_vals == cond_values:
             self._control_idx.append(len(self._data))
         cond_label = str(cond_values)
@@ -264,7 +269,10 @@ def read_file(data_file_name):
                                                  'data format\n'.format(control))
                                 sys.exit(1)
                             cond_col_names.append(parts[0])
-                            control_values.append(float(parts[1]))
+                            try:
+                                control_values.append(float(parts[1]))
+                            except ValueError:
+                                control_values.append(parts[1])
             elif line.isspace():
                 pass
             else:
