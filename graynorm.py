@@ -37,7 +37,7 @@ class Data(object):
         self._control_idx = []
         self._cond_idx = []
         self._cond_groups = {}
-        self._cond_group_idx = []     
+        self._cond_group_idx = []
         self._gene_idx = None
     
     def add(self, data):
@@ -241,13 +241,13 @@ def read_file(data_file_name):
     gene_col_names = None
     cond_col_names = None
     control_values = None
-    last_pos = 0
-    with open(data_file_name) as data_file:
-        for line in data_file:
-            line = line.replace(';', '\t')
-            last_pos = data_file.tell()
-            if line.strip().startswith('#'):
-                match = meta_info_re.match(line)
+    with open(data_file_name, 'rb') as data_file:
+        dialect = csv.Sniffer().sniff(data_file.read(2048))
+        data_file.seek(0)
+        data_reader = csv.reader(data_file, dialect=dialect)
+        for row in data_reader:
+            if row[0].strip().startswith('#'):
+                match = meta_info_re.match(row[0])
                 if match:
                     key = match.group(1)
                     value = match.group(2)
@@ -273,10 +273,10 @@ def read_file(data_file_name):
                                 control_values.append(float(parts[1]))
                             except ValueError:
                                 control_values.append(parts[1])
-            elif line.isspace():
+            elif row[0].isspace():
                 pass
             else:
-                headers = re.split(r'\s+', line.strip())
+                headers = row
                 status = check_input(sample_col_name, cond_col_names,
                                      control_values, gene_col_names,
                                      headers)
@@ -288,10 +288,9 @@ def read_file(data_file_name):
                 data.set_control_vals(control_values)
                 data.set_gene_col_names(gene_col_names)
                 break
-        for line in data_file:
-            line = line.replace(';', '\t')
-            if not line.strip().startswith('#') and not line.isspace():
-                data.add(re.split(r'\s+', line.strip()))
+        for row in data_reader:
+            if not row[0].strip().startswith('#') and not row[0].isspace():
+                data.add(row)
     return data
 
 def check_input(sample_col_name, cond_col_names, control_values,
