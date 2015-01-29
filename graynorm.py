@@ -242,7 +242,7 @@ def read_file(data_file_name):
     gene_col_names = None
     cond_col_names = None
     control_values = None
-    with open(data_file_name, 'rb') as data_file:
+    with open(data_file_name, 'Ub') as data_file:
         dialect = csv.Sniffer().sniff(data_file.read(2048))
         data_file.seek(0)
         data_reader = csv.reader(data_file, dialect=dialect)
