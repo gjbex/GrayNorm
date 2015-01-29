@@ -39,7 +39,7 @@ class Data(object):
         self._cond_groups = {}
         self._cond_group_idx = []
         self._gene_idx = None
-    
+
     def add(self, data):
         '''add a sample, represented as a list'''
         for idx, header in enumerate(self._headers):
@@ -152,8 +152,9 @@ class Data(object):
         inv_nfs_vs_ctrl = self.compute_inv_nf_vs_control(genes)
         stats = []
         for cond_values in self.condition_values:
-            avg, stddev, stderr = compute_stats([inv_nfs_vs_ctrl[i]
-                                                     for i in self.condition_group(cond_values)])
+            inv_nfs_vs_ctrls = [inv_nfs_vs_ctrl[i]
+                                for i in self.condition_group(cond_values)]
+            avg, stddev, stderr = compute_stats(inv_nfs_vs_ctrls)
             stats.append({
                 'cond':   cond_values,
                 'avg':    avg,
@@ -188,7 +189,7 @@ class Data(object):
                 })
         gene_combinations.sort(key=lambda x: x['overall']['cv_inter'])
         return gene_combinations
-        
+
     def __str__(self):
         s = ''
         s += '# genes: ' + ','.join(self.genes()) + '\n'
@@ -203,10 +204,10 @@ class Data(object):
     def header_row(self):
         row = ['gene combination', 'CV inter']
         row.extend(['CV intra cond {0}'.format(i)
-                       for i in xrange(1, self.nr_conditions + 1)])
+                    for i in xrange(1, self.nr_conditions + 1)])
         for i in xrange(1, self.nr_conditions + 1):
             row.extend(['{quant} cond {i}'.format(quant=q, i=i)
-                            for q in ['avg', 'stddev', 'stderr']])
+                        for q in ['avg', 'stddev', 'stderr']])
         row.extend(['avg 1/NF', 'stddev 1/NF', 'cummulative 1/NF'])
         return row
 
@@ -308,11 +309,16 @@ def check_input(sample_col_name, cond_col_names, control_values,
 
 def check_column(name, col_names, headers):
     if not col_names:
-        sys.stderr.write('### error: no column name(s) for {0} specified, check input data format\n'.format(name))
+        msg = ('### error: no column name(s) for {0} specified, '
+               'check input data format\n').format(name)
+        sys.stderr.write(msg)
         return 4
     unknowns = unknown_columns(col_names, headers)
     if unknowns:
-        sys.stderr.write('### error: no column for {0}(s) {1} present, check input data format\n'.format(name, ','.join(["'{0}'".format(x) for x in unknowns])))
+        unknown_str = ','.join(["'{0}'".format(x) for x in unknowns])
+        msg = ('### error: no column for {0}(s) {1} present, check '
+               'input data format\n').format(name, unknown_str)
+        sys.stderr.write(msg)
         return 5
 
 def unknown_columns(cols, headers):
@@ -380,4 +386,3 @@ if __name__ == '__main__':
     status = main()
     sys.exit(status)
 
-    
