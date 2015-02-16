@@ -37,9 +37,9 @@ class Data(object):
         self._control_idx = []
         self._cond_idx = []
         self._cond_groups = {}
-        self._cond_group_idx = []     
+        self._cond_group_idx = []
         self._gene_idx = None
-    
+
     def add(self, data):
         '''add a sample, represented as a list'''
         for idx, header in enumerate(self._headers):
@@ -152,8 +152,9 @@ class Data(object):
         inv_nfs_vs_ctrl = self.compute_inv_nf_vs_control(genes)
         stats = []
         for cond_values in self.condition_values:
-            avg, stddev, stderr = compute_stats([inv_nfs_vs_ctrl[i]
-                                                     for i in self.condition_group(cond_values)])
+            inv_nfs_vs_ctrls = [inv_nfs_vs_ctrl[i]
+                                for i in self.condition_group(cond_values)]
+            avg, stddev, stderr = compute_stats(inv_nfs_vs_ctrls)
             stats.append({
                 'cond':   cond_values,
                 'avg':    avg,
@@ -188,7 +189,7 @@ class Data(object):
                 })
         gene_combinations.sort(key=lambda x: x['overall']['cv_inter'])
         return gene_combinations
-        
+
     def __str__(self):
         s = ''
         s += '# genes: ' + ','.join(self.genes()) + '\n'
@@ -203,10 +204,10 @@ class Data(object):
     def header_row(self):
         row = ['gene combination', 'CV inter']
         row.extend(['CV intra cond {0}'.format(i)
-                       for i in xrange(1, self.nr_conditions + 1)])
+                    for i in xrange(1, self.nr_conditions + 1)])
         for i in xrange(1, self.nr_conditions + 1):
             row.extend(['{quant} cond {i}'.format(quant=q, i=i)
-                            for q in ['avg', 'stddev', 'stderr']])
+                        for q in ['avg', 'stddev', 'stderr']])
         row.extend(['avg 1/NF', 'stddev 1/NF', 'cummulative 1/NF'])
         return row
 
@@ -241,13 +242,13 @@ def read_file(data_file_name):
     gene_col_names = None
     cond_col_names = None
     control_values = None
-    last_pos = 0
-    with open(data_file_name) as data_file:
-        for line in data_file:
-            line = line.replace(';', '\t')
-            last_pos = data_file.tell()
-            if line.strip().startswith('#'):
-                match = meta_info_re.match(line)
+    with open(data_file_name, 'Ub') as data_file:
+        dialect = csv.Sniffer().sniff(data_file.read(2048))
+        data_file.seek(0)
+        data_reader = csv.reader(data_file, dialect=dialect)
+        for row in data_reader:
+            if row[0].strip().startswith('#'):
+                match = meta_info_re.match(row[0])
                 if match:
                     key = match.group(1)
                     value = match.group(2)
@@ -273,10 +274,10 @@ def read_file(data_file_name):
                                 control_values.append(float(parts[1]))
                             except ValueError:
                                 control_values.append(parts[1])
-            elif line.isspace():
+            elif row[0].isspace():
                 pass
             else:
-                headers = re.split(r'\s+', line.strip())
+                headers = row
                 status = check_input(sample_col_name, cond_col_names,
                                      control_values, gene_col_names,
                                      headers)
@@ -288,10 +289,9 @@ def read_file(data_file_name):
                 data.set_control_vals(control_values)
                 data.set_gene_col_names(gene_col_names)
                 break
-        for line in data_file:
-            line = line.replace(';', '\t')
-            if not line.strip().startswith('#') and not line.isspace():
-                data.add(re.split(r'\s+', line.strip()))
+        for row in data_reader:
+            if not row[0].strip().startswith('#') and not row[0].isspace():
+                data.add(row)
     return data
 
 def check_input(sample_col_name, cond_col_names, control_values,
@@ -309,11 +309,16 @@ def check_input(sample_col_name, cond_col_names, control_values,
 
 def check_column(name, col_names, headers):
     if not col_names:
-        sys.stderr.write('### error: no column name(s) for {0} specified, check input data format\n'.format(name))
+        msg = ('### error: no column name(s) for {0} specified, '
+               'check input data format\n').format(name)
+        sys.stderr.write(msg)
         return 4
     unknowns = unknown_columns(col_names, headers)
     if unknowns:
-        sys.stderr.write('### error: no column for {0}(s) {1} present, check input data format\n'.format(name, ','.join(["'{0}'".format(x) for x in unknowns])))
+        unknown_str = ','.join(["'{0}'".format(x) for x in unknowns])
+        msg = ('### error: no column for {0}(s) {1} present, check '
+               'input data format\n').format(name, unknown_str)
+        sys.stderr.write(msg)
         return 5
 
 def unknown_columns(cols, headers):
@@ -381,4 +386,3 @@ if __name__ == '__main__':
     status = main()
     sys.exit(status)
 
-    
