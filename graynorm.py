@@ -24,10 +24,16 @@
 # ------------------------------------------------------------------------
 #
 from argparse import ArgumentParser, FileType
+import csv
+from functools import reduce
+import itertools
+import logging
 from math import sqrt
-import csv, itertools, logging, re, sys
+import re
+import sys
 
-class Data(object):
+
+class Data:
 
     def __init__(self, headers):
         self._headers = headers
@@ -43,7 +49,7 @@ class Data(object):
     def add(self, data):
         '''add a sample, represented as a list'''
         for idx, header in enumerate(self._headers):
-            if not header in self._non_data:
+            if header not in self._non_data:
                 data[idx] = float(data[idx])
         cond_values = []
         for x in self._cond_idx:
@@ -108,7 +114,8 @@ class Data(object):
         if cond_label in self._cond_groups:
             return self._cond_groups[cond_label]
         else:
-            sys.stderr.write('### error: no such condition {0}\n'.format(cond_label))
+            msg = '### error: no such condition {0}'
+            print(msg.format(cond_label), file=sys.stderr)
             sys.exit(1)
 
     def set_control_vals(self, values):
@@ -178,7 +185,7 @@ class Data(object):
 
     def compute_all(self, cand_genes):
         gene_combinations = []
-        for n in xrange(1, len(cand_genes) + 1):
+        for n in range(1, len(cand_genes) + 1):
             for genes in itertools.combinations(cand_genes, n):
                 cond_stats = self.compute_condition_stats(genes)
                 overall_stats = self.compute_overall_stats(genes)
@@ -191,10 +198,14 @@ class Data(object):
         return gene_combinations
 
     def __str__(self):
-        s = ''
-        s += '# genes: ' + ','.join(self.genes()) + '\n'
-        s += '# controls: ' + ','.join([str(idx) for idx in self.condition_columns]) + '\n'
-        s += '# control rows: ' + ', '.join([str(idx) for idx in self.control_rows]) + '\n'
+        s = ('# genes: {0}\n'
+             '# controls: {1}\n'
+             '# control rows: {2}\n'
+             '{3}').format(','.join(self.genes()),
+                           ','.join(str(idx) for
+                                    idx in self.condition_columns),
+                           ', '.join(str(idx) for
+                                     idx in self.control_rows))
         s += '\t'.join(self._headers)
         for data in self._data:
             s += '\n' + '\t'.join(['{0}'.format(x) for x in data])
@@ -204,8 +215,8 @@ class Data(object):
     def header_row(self):
         row = ['gene combination', 'CV inter']
         row.extend(['CV intra cond {0}'.format(i)
-                    for i in xrange(1, self.nr_conditions + 1)])
-        for i in xrange(1, self.nr_conditions + 1):
+                    for i in range(1, self.nr_conditions + 1)])
+        for i in range(1, self.nr_conditions + 1):
             row.extend(['{quant} cond {i}'.format(quant=q, i=i)
                         for q in ['avg', 'stddev', 'stderr']])
         row.extend(['avg 1/NF', 'stddev 1/NF', 'cummulative 1/NF'])
@@ -235,6 +246,7 @@ def compute_stats(numbers):
     stddev = sqrt((s2 - s**2/n)/(n - 1.0))
     return (s/n, stddev, stddev/sqrt(n))
 
+
 def read_file(data_file_name):
     data = None
     meta_info_re = re.compile(r'\s*#\s*(\w+)\s*:\s*(.+?)\s*$')
@@ -242,7 +254,7 @@ def read_file(data_file_name):
     gene_col_names = None
     cond_col_names = None
     control_values = None
-    with open(data_file_name, 'Ub') as data_file:
+    with open(data_file_name, 'r') as data_file:
         dialect = csv.Sniffer().sniff(data_file.read(2048))
         data_file.seek(0)
         data_reader = csv.reader(data_file, dialect=dialect)
@@ -263,11 +275,11 @@ def read_file(data_file_name):
                         for control in controls:
                             parts = re.split(r'\s*=\s*', control)
                             if len(parts) < 2:
-                                sys.stderr.write('### error: no control ' \
-                                                 'value for control ' \
-                                                 'parameter \'{0}\', ' \
-                                                 'check input ' \
-                                                 'data format\n'.format(control))
+                                msg = ('### error: no control value '
+                                       'for cntrol parameter \'{0}\', '
+                                       'check input data format')
+                                print(msg.format(control),
+                                      file=sys.stderr)
                                 sys.exit(1)
                             cond_col_names.append(parts[0])
                             try:
@@ -294,6 +306,7 @@ def read_file(data_file_name):
                 data.add(row)
     return data
 
+
 def check_input(sample_col_name, cond_col_names, control_values,
                 gene_col_names, headers):
     col_info = [
@@ -306,6 +319,7 @@ def check_input(sample_col_name, cond_col_names, control_values,
         if status:
             return status
     return 0
+
 
 def check_column(name, col_names, headers):
     if not col_names:
@@ -321,6 +335,7 @@ def check_column(name, col_names, headers):
         sys.stderr.write(msg)
         return 5
 
+
 def unknown_columns(cols, headers):
     if isinstance(cols, str):
         cols = [cols]
@@ -330,6 +345,7 @@ def unknown_columns(cols, headers):
         return set()
     else:
         return c_set - h_set
+
 
 def compute_gene_idx(gene_str):
     parts = re.split(r'\s*,\s*', gene_str)
@@ -343,8 +359,10 @@ def compute_gene_idx(gene_str):
         if match is not None:
             idx.extend(range(int(match.group(1)) - 1, int(match.group(2))))
             continue
-        sys.stderr.write('### error: invalid gene specs: {0}\n'.format(gene_str))
+        msg = '### error: invalid gene specs: {0}'
+        print(msg.format(gene_str), file=sys.stderr)
     return idx
+
 
 def main():
     arg_parser = ArgumentParser(description='compute support')
@@ -353,7 +371,7 @@ def main():
     arg_parser.add_argument('-refgenes', dest='cand_genes',
                             help='comma-separated list of candidate'
                                  ' normalization genes')
-    arg_parser.add_argument('-out', dest='output', type=FileType('wb'),
+    arg_parser.add_argument('-out', dest='output', type=FileType('w'),
                             required=True, help='CSV file to write the'
                                                 ' results')
     arg_parser.add_argument('-verbose', dest='verbose', action='store_true',
@@ -367,7 +385,7 @@ def main():
     try:
         data = read_file(options.data_file)
     except IOError as e:
-        print dir(e)
+        print(dir(e))
         sys.stderr.write("### error: {0}: '{1}'\n".format(e.strerror,
                                                           e.filename))
         sys.exit(2)
@@ -382,7 +400,7 @@ def main():
     data.write_results(stats, options.output)
     return 0
 
+
 if __name__ == '__main__':
     status = main()
     sys.exit(status)
-
