@@ -25,7 +25,18 @@
 #
 from argparse import ArgumentParser, FileType
 from math import sqrt
-import csv, itertools, logging, re, sys
+import csv, functools, itertools, logging, re, sys
+
+
+def to_float(s):
+    try:
+        return float(s)
+    except ValueError:
+        try:
+            return float(s.replace(',', '.'))
+        except ValueError as error:
+            print('### error: ' + str(error), file=sys.stderr)
+
 
 class Data(object):
 
@@ -44,7 +55,7 @@ class Data(object):
         '''add a sample, represented as a list'''
         for idx, header in enumerate(self._headers):
             if not header in self._non_data:
-                data[idx] = float(data[idx])
+                data[idx] = to_float(data[idx])
         cond_values = []
         for x in self._cond_idx:
             try:
@@ -133,7 +144,7 @@ class Data(object):
         col_sel = [header in genes for header in self._headers]
         nfs = []
         for row in self._data:
-            nf = reduce(lambda x, y: x*y,
+            nf = functools.reduce(lambda x, y: x*y,
                         itertools.compress(row, col_sel),
                         1.0)**(1.0/len(genes))
             nfs.append(nf)
@@ -154,7 +165,12 @@ class Data(object):
         for cond_values in self.condition_values:
             inv_nfs_vs_ctrls = [inv_nfs_vs_ctrl[i]
                                 for i in self.condition_group(cond_values)]
-            avg, stddev, stderr = compute_stats(inv_nfs_vs_ctrls)
+            try:
+                avg, stddev, stderr = compute_stats(inv_nfs_vs_ctrls)
+            except ZeroDivisionError:
+                print('### error: not enough data for ' + str(cond_values),
+                      file=sys.stderr)
+                sys.exit(2)
             stats.append({
                 'cond':   cond_values,
                 'avg':    avg,
@@ -178,7 +194,7 @@ class Data(object):
 
     def compute_all(self, cand_genes):
         gene_combinations = []
-        for n in xrange(1, len(cand_genes) + 1):
+        for n in range(1, len(cand_genes) + 1):
             for genes in itertools.combinations(cand_genes, n):
                 cond_stats = self.compute_condition_stats(genes)
                 overall_stats = self.compute_overall_stats(genes)
@@ -204,8 +220,8 @@ class Data(object):
     def header_row(self):
         row = ['gene combination', 'CV inter']
         row.extend(['CV intra cond {0}'.format(i)
-                    for i in xrange(1, self.nr_conditions + 1)])
-        for i in xrange(1, self.nr_conditions + 1):
+                    for i in range(1, self.nr_conditions + 1)])
+        for i in range(1, self.nr_conditions + 1):
             row.extend(['{quant} cond {i}'.format(quant=q, i=i)
                         for q in ['avg', 'stddev', 'stderr']])
         row.extend(['avg 1/NF', 'stddev 1/NF', 'cummulative 1/NF'])
@@ -222,7 +238,7 @@ class Data(object):
 
     def write_results(self, stats, output_file):
         with output_file:
-            csv_writer = csv.writer(output_file)
+            csv_writer = csv.writer(output_file, quotechar="'", quoting=csv.QUOTE_NONNUMERIC)
             csv_writer.writerow(self.header_row)
             for stat in stats:
                 csv_writer.writerow(self.output_row(stat))
@@ -235,15 +251,16 @@ def compute_stats(numbers):
     stddev = sqrt((s2 - s**2/n)/(n - 1.0))
     return (s/n, stddev, stddev/sqrt(n))
 
-def read_file(data_file_name):
+def read_file(data_file_name, sniff_bytes):
     data = None
     meta_info_re = re.compile(r'\s*#\s*(\w+)\s*:\s*(.+?)\s*$')
     sample_col_name = None
     gene_col_names = None
     cond_col_names = None
     control_values = None
-    with open(data_file_name, 'Ub') as data_file:
-        dialect = csv.Sniffer().sniff(data_file.read(2048))
+    with open(data_file_name, newline='') as data_file:
+        dialect = csv.Sniffer().sniff(data_file.read(sniff_bytes))
+        logging.info("using '" + dialect.delimiter + "' as CSV delimiter")
         data_file.seek(0)
         data_reader = csv.reader(data_file, dialect=dialect)
         for row in data_reader:
@@ -353,21 +370,24 @@ def main():
     arg_parser.add_argument('-refgenes', dest='cand_genes',
                             help='comma-separated list of candidate'
                                  ' normalization genes')
-    arg_parser.add_argument('-out', dest='output', type=FileType('wb'),
+    arg_parser.add_argument('-out', dest='output', type=FileType('w'),
                             required=True, help='CSV file to write the'
                                                 ' results')
+    arg_parser.add_argument('-sniff', type=int, default=2048,
+                            help='number of bytes to sniff to determine CSV dialect')
     arg_parser.add_argument('-verbose', dest='verbose', action='store_true',
                             help='print feedback during run')
     options = arg_parser.parse_args()
     if options.verbose:
         logging.basicConfig(level=logging.INFO)
+    logging.info('sniffing with ' + str(options.sniff) + ' bytes')
     gene_idx = None
     if options.cand_genes:
         gene_idx = compute_gene_idx(options.cand_genes)
     try:
-        data = read_file(options.data_file)
+        data = read_file(options.data_file, options.sniff)
     except IOError as e:
-        print dir(e)
+        print(dir(e))
         sys.stderr.write("### error: {0}: '{1}'\n".format(e.strerror,
                                                           e.filename))
         sys.exit(2)

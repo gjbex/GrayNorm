@@ -65,6 +65,7 @@ Geert Jan Bex <geertjan.bex@uhasselt.be>
 Changes
 -------
 
+* 1.2: ported to Python 3
 * 1.1: improved, more robust input parser; added FAQ
 * 1.0.1: added support for textual control values
 * 1.0: initial release
