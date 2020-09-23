@@ -1,7 +1,16 @@
-February 2015
+# FAQ September 2020
 
-Trouble shooting
-----------------
+### Is Graynorm Python 3 compatible?
+
+Release 1.2 is Python 3 compatible.
+
+### I'm stuck with Python 2, can I still use Graynorm?
+
+Yes, you can, use release 1.1
+
+
+## Trouble shooting
+
 Please be aware of following essentials that are often overlooked causing failure in generating an output. 
 
 * all header lines of the inputfile should start with "#", also the
