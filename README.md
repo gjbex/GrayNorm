@@ -6,12 +6,12 @@ What is it?
 GrayNorm is an algorithm that helps the researcher to identify suitable reference genes that are minimally influenced by the experiment.  Gene expression levels are determined by quantitative reverse transcription PCR (RT-qPCR) and one is interested in up- or down regulation of various genes as a consequence of varying experimental conditions.
 
 Requirements
------------
-GrayNorm has been implemented in Python 2.7.x, using only Python's standard library. Hence it will run as a command line program on any platform on which Python is installed. In the following its usage in the “Enthought Canopy” Python platform (free version available from https://store.enthought.com/) is outlined.
+------------
+GrayNorm has been implemented in Python w.x, using only Python's standard library. Hence it will run as a command line program on any platform on which Python is installed. In the following its usage in the “Anaconda” Python platform (free version available from https://www.anaconda.com/) is outlined.
 
 How to use it?
 --------------
-GrayNorm (as the “graynorm.txt” or the `graynorm.py` file) can be opened in Canopy in the editor window (top window). Then the Graynorm procedure on the data can be called from the Canopy command line as follows:
+GrayNorm (as the “graynorm.txt” or the `graynorm.py` file) can be opened in Canopy in the editor window (top window). Then the Graynorm procedure on the data can be called from the Spyder command line as follows:
 ```
 %run graynorm.py -in data.csv -out output.csv
 ```
