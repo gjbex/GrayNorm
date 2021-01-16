@@ -7,11 +7,11 @@ GrayNorm is an algorithm that helps the researcher to identify suitable referenc
 
 Requirements
 ------------
-GrayNorm has been implemented in Python w.x, using only Python's standard library. Hence it will run as a command line program on any platform on which Python is installed. In the following its usage in the “Anaconda” Python platform (free version available from https://www.anaconda.com/) is outlined.
+GrayNorm has been implemented in Python 3.x, using only Python's standard library. Hence it will run as a command line program on any platform on which Python is installed. In the following its usage in the Anaconda Python platform (free version available from https://www.anaconda.com/) is outlined.
 
 How to use it?
 --------------
-GrayNorm (as the “graynorm.txt” or the `graynorm.py` file) can be opened in Canopy in the editor window (top window). Then the Graynorm procedure on the data can be called from the Spyder command line as follows:
+GrayNorm (as the “graynorm.txt” or the `graynorm.py` file). Then the Graynorm procedure on the data can be called from the Spyder command line as follows:
 ```
 %run graynorm.py -in data.csv -out output.csv
 ```
@@ -19,7 +19,7 @@ OR
 ```
 %run graynorm.txt -in data.csv -out output.csv
 ```
-The input file (in the above command line e.g., `data.csv`) is a file in CSV format, and it will be documented in the next section. The output of the program is stored in an CSV file as well (in the above example e.g., `output.csv` in the example above). The GrayNorm script (`graynorm.py`) and the input file should be in the same working directory that can be chosen as follows: choose “change working directory” from the drop down menu in the top right corner of the lower command window in Canopy. 
+The input file (in the above command line e.g., `data.csv`) is a file in CSV format, and it will be documented in the next section. The output of the program is stored in an CSV file as well (in the above example e.g., `output.csv` in the example above). The GrayNorm script (`graynorm.py`) and the input file should be in the same working directory that can be chosen as follows: choose the working directory by selecting the folder icon next to the drop down menu in the top right corner of the Spyder window.
 
 Input data format
 -----------------
