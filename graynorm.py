@@ -47,6 +47,12 @@ class Metadata:
         self.cond_col_names = None
         self.control_values = None
 
+    def __str__(self):
+        metadata_str = f'sample column name = {self.sample_col_name}'
+        metadata_str += f'\ngene column name = {", ".join(self.gene_col_names)}'
+        metadata_str += f'\ncondition column name = {", ".join(self.cond_col_names)}'
+        metadata_str += f'\ncontrol values = {self.control_values}'
+        return metadata_str
 
 class Data(object):
 
@@ -262,7 +268,7 @@ def compute_stats(numbers):
     return (s/n, stddev, stddev/sqrt(n))
 
 def read_meta_data(data_file_name):
-    meta_info_re = re.compile(r'\s*#\s*(\w+)\s*:\s*(.+?)\s*$')
+    meta_info_re = re.compile(r'\s*#\s*(\w+)\s*:\s*(.+?),*\s*$')
     header_byte_count = 0
     sample_col_name = None
     gene_col_names = None
@@ -281,6 +287,7 @@ def read_meta_data(data_file_name):
                     elif key == 'refgenes':
                         gene_col_names = re.split(r'\s*,\s*', value)
                     elif key == 'controls':
+                        print(value)
                         cond_col_names = []
                         control_values = []
                         controls = re.split(r'\s*,\s*', value)
@@ -434,6 +441,8 @@ def main():
                                                 ' results')
     arg_parser.add_argument('-sniff', type=int, default=2048,
                             help='number of bytes to sniff to determine CSV dialect')
+    arg_parser.add_argument('-metadata_only', action='store_true',
+                            help='only parse and display metadata')
     arg_parser.add_argument('-verbose', dest='verbose', action='store_true',
                             help='print feedback during run')
     options = arg_parser.parse_args()
@@ -444,6 +453,11 @@ def main():
     if options.cand_genes:
         gene_idx = compute_gene_idx(options.cand_genes)
     try:
+        metadata = read_meta_data(options.data_file)
+        if options.metadata_only:
+            print(metadata)
+            print(f'header has {metadata.header_byte_count} bytes')
+            sys.exit(0)
         data = read_file(options.data_file, options.sniff)
     except IOError as e:
         print(dir(e))
