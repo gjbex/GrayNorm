@@ -38,6 +38,16 @@ def to_float(s):
             print('### error: ' + str(error), file=sys.stderr)
 
 
+class Metadata:
+
+    def __init__(self):
+        self.header_byte_count = 0
+        self.sample_col_name = None
+        self.gene_col_names = None
+        self.cond_col_names = None
+        self.control_values = None
+
+
 class Data(object):
 
     def __init__(self, headers):
@@ -250,6 +260,55 @@ def compute_stats(numbers):
     s2 = sum([x**2 for x in numbers])
     stddev = sqrt((s2 - s**2/n)/(n - 1.0))
     return (s/n, stddev, stddev/sqrt(n))
+
+def read_meta_data(data_file_name):
+    meta_info_re = re.compile(r'\s*#\s*(\w+)\s*:\s*(.+?)\s*$')
+    header_byte_count = 0
+    sample_col_name = None
+    gene_col_names = None
+    cond_col_names = None
+    control_values = None
+    with open(data_file_name) as file:
+        for line in file:
+            if line.strip().startswith('#'):
+                header_byte_count += len(line)
+                match = meta_info_re.match(line)
+                if match:
+                    key = match.group(1)
+                    value = match.group(2)
+                    if key == 'sampleid':
+                        sample_col_name = value
+                    elif key == 'refgenes':
+                        gene_col_names = re.split(r'\s*,\s*', value)
+                    elif key == 'controls':
+                        cond_col_names = []
+                        control_values = []
+                        controls = re.split(r'\s*,\s*', value)
+                        for control in controls:
+                            parts = re.split(r'\s*=\s*', control)
+                            if len(parts) < 2:
+                                sys.stderr.write('### error: no control ' \
+                                                 'value for control ' \
+                                                 'parameter \'{0}\', ' \
+                                                 'check input ' \
+                                                 'data format\n'.format(control))
+                                sys.exit(1)
+                            cond_col_names.append(parts[0])
+                            try:
+                                control_values.append(float(parts[1]))
+                            except ValueError:
+                                control_values.append(parts[1])
+            elif line.isspace():
+                continue
+            else:
+                break
+    metadata = Metadata()
+    metadata.header_byte_count = header_byte_count
+    metadata.sample_col_name = sample_col_name
+    metadata.gene_col_names = gene_col_names
+    metadata.cond_col_names = cond_col_names
+    metadata.control_values = control_values
+    return metadata
 
 def read_file(data_file_name, sniff_bytes):
     data = None
