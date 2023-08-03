@@ -35,7 +35,7 @@ def to_float(s):
         try:
             return float(s.replace(',', '.'))
         except ValueError as error:
-            print('### error: ' + str(error), file=sys.stderr)
+            print(f'### error: {str(error)}', file=sys.stderr)
 
 
 class Data(object):
@@ -54,7 +54,7 @@ class Data(object):
     def add(self, data):
         '''add a sample, represented as a list'''
         for idx, header in enumerate(self._headers):
-            if not header in self._non_data:
+            if header not in self._non_data:
                 data[idx] = to_float(data[idx])
         cond_values = []
         for x in self._cond_idx:
@@ -118,9 +118,8 @@ class Data(object):
         cond_label = str(cond_values)
         if cond_label in self._cond_groups:
             return self._cond_groups[cond_label]
-        else:
-            sys.stderr.write('### error: no such condition {0}\n'.format(cond_label))
-            sys.exit(1)
+        sys.stderr.write('### error: no such condition {0}\n'.format(cond_label))
+        sys.exit(1)
 
     def set_control_vals(self, values):
         self._control_cond_vals = values
@@ -155,7 +154,7 @@ class Data(object):
 
     def compute_inv_nf_vs_control(self, genes):
         inv_nfs = self.compute_inv_nf(genes)
-        avg_control = sum([inv_nfs[idx] for idx in self.control_rows])
+        avg_control = sum(inv_nfs[idx] for idx in self.control_rows)
         avg_control /= len(self.control_rows)
         return [x/avg_control for x in inv_nfs]
 
@@ -168,8 +167,7 @@ class Data(object):
             try:
                 avg, stddev, stderr = compute_stats(inv_nfs_vs_ctrls)
             except ZeroDivisionError:
-                print('### error: not enough data for ' + str(cond_values),
-                      file=sys.stderr)
+                print(f'### error: not enough data for {str(cond_values)}', file=sys.stderr)
                 sys.exit(2)
             stats.append({
                 'cond':   cond_values,
@@ -184,7 +182,7 @@ class Data(object):
         stats = self.compute_condition_stats(genes)
         avgs = [stat['avg'] for stat in stats]
         avg, stddev, _ = compute_stats(avgs)
-        cumm = sum([abs(1.0 - x) for x in avgs])
+        cumm = sum(abs(1.0 - x) for x in avgs)
         return {
             'avg':    avg,
             'stddev': stddev,
@@ -218,9 +216,14 @@ class Data(object):
 
     @property
     def header_row(self):
-        row = ['gene combination', 'CV inter']
-        row.extend(['CV intra cond {0}'.format(i)
-                    for i in range(1, self.nr_conditions + 1)])
+        row = [
+            'gene combination',
+            'CV inter',
+            *[
+                'CV intra cond {0}'.format(i)
+                for i in range(1, self.nr_conditions + 1)
+            ],
+        ]
         for i in range(1, self.nr_conditions + 1):
             row.extend(['{quant} cond {i}'.format(quant=q, i=i)
                         for q in ['avg', 'stddev', 'stderr']])
@@ -228,8 +231,11 @@ class Data(object):
         return row
 
     def output_row(self, stats):
-        row = [' + '.join(stats['genes']), stats['overall']['cv_inter']]
-        row.extend([cond['cv_intra'] for cond in stats['conds']])
+        row = [
+            ' + '.join(stats['genes']),
+            stats['overall']['cv_inter'],
+            *[cond['cv_intra'] for cond in stats['conds']],
+        ]
         for cond in stats['conds']:
             row.extend([cond['avg'], cond['stddev'], cond['stderr']])
         row.extend([stats['overall']['avg'], stats['overall']['stddev'],
@@ -247,7 +253,7 @@ class Data(object):
 def compute_stats(numbers):
     n = len(numbers)
     s = sum(numbers)
-    s2 = sum([x**2 for x in numbers])
+    s2 = sum(x**2 for x in numbers)
     stddev = sqrt((s2 - s**2/n)/(n - 1.0))
     return (s/n, stddev, stddev/sqrt(n))
 
@@ -265,9 +271,8 @@ def read_file(data_file_name, sniff_bytes):
         data_reader = csv.reader(data_file, dialect=dialect)
         for row in data_reader:
             if row[0].strip().startswith('#'):
-                match = meta_info_re.match(row[0])
-                if match:
-                    key = match.group(1)
+                if match := meta_info_re.match(row[0]):
+                    key = match[1]
                     value = match.group(2)
                     if key == 'sampleid':
                         sample_col_name = value
@@ -291,14 +296,15 @@ def read_file(data_file_name, sniff_bytes):
                                 control_values.append(float(parts[1]))
                             except ValueError:
                                 control_values.append(parts[1])
-            elif row[0].isspace():
-                pass
-            else:
+            elif not row[0].isspace():
                 headers = row
-                status = check_input(sample_col_name, cond_col_names,
-                                     control_values, gene_col_names,
-                                     headers)
-                if status:
+                if status := check_input(
+                    sample_col_name,
+                    cond_col_names,
+                    control_values,
+                    gene_col_names,
+                    headers,
+                ):
                     sys.exit(status)
                 data = Data(headers)
                 data.set_sample_col_name(sample_col_name)
@@ -319,8 +325,7 @@ def check_input(sample_col_name, cond_col_names, control_values,
         ('genes', gene_col_names),
     ]
     for info in col_info:
-        status = check_column(info[0], info[1], headers)
-        if status:
+        if status := check_column(info[0], info[1], headers):
             return status
     return 0
 
@@ -330,8 +335,7 @@ def check_column(name, col_names, headers):
                'check input data format\n').format(name)
         sys.stderr.write(msg)
         return 4
-    unknowns = unknown_columns(col_names, headers)
-    if unknowns:
+    if unknowns := unknown_columns(col_names, headers):
         unknown_str = ','.join(["'{0}'".format(x) for x in unknowns])
         msg = ('### error: no column for {0}(s) {1} present, check '
                'input data format\n').format(name, unknown_str)
@@ -343,10 +347,7 @@ def unknown_columns(cols, headers):
         cols = [cols]
     c_set = set(cols)
     h_set = set(headers)
-    if c_set < h_set:
-        return set()
-    else:
-        return c_set - h_set
+    return set() if c_set < h_set else c_set - h_set
 
 def compute_gene_idx(gene_str):
     parts = re.split(r'\s*,\s*', gene_str)
@@ -354,11 +355,11 @@ def compute_gene_idx(gene_str):
     for part in parts:
         match = re.match(r'^(\d+)$', part.strip())
         if match is not None:
-            idx.append(int(match.group(1)) - 1)
+            idx.append(int(match[1]) - 1)
             continue
         match = re.match(r'^(\d+)-(\d+)$', part.strip())
         if match is not None:
-            idx.extend(range(int(match.group(1)) - 1, int(match.group(2))))
+            idx.extend(range(int(match[1]) - 1, int(match[2])))
             continue
         sys.stderr.write('### error: invalid gene specs: {0}\n'.format(gene_str))
     return idx
@@ -380,10 +381,8 @@ def main():
     options = arg_parser.parse_args()
     if options.verbose:
         logging.basicConfig(level=logging.INFO)
-    logging.info('sniffing with ' + str(options.sniff) + ' bytes')
-    gene_idx = None
-    if options.cand_genes:
-        gene_idx = compute_gene_idx(options.cand_genes)
+    logging.info(f'sniffing with {str(options.sniff)} bytes')
+    gene_idx = compute_gene_idx(options.cand_genes) if options.cand_genes else None
     try:
         data = read_file(options.data_file, options.sniff)
     except IOError as e:
@@ -392,12 +391,12 @@ def main():
                                                           e.filename))
         sys.exit(2)
     genes = data.genes(gene_idx)
-    logging.info('sample column: ' + str(data.sample_column))
-    logging.info('condition columns: ' + str(data.condition_columns))
-    logging.info('control values: ' + str(data.control_values))
-    logging.info('condition values: ' + str(data.condition_values))
-    logging.info('control data rows: ' + str(data.control_rows))
-    logging.info('genes: ' + str(genes))
+    logging.info(f'sample column: {str(data.sample_column)}')
+    logging.info(f'condition columns: {str(data.condition_columns)}')
+    logging.info(f'control values: {str(data.control_values)}')
+    logging.info(f'condition values: {str(data.condition_values)}')
+    logging.info(f'control data rows: {str(data.control_rows)}')
+    logging.info(f'genes: {str(genes)}')
     stats = data.compute_all(genes)
     data.write_results(stats, options.output)
     return 0
